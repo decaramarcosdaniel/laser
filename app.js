@@ -1,8 +1,12 @@
+
+let audioCtx=null;
+function setupAudio(){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume();}catch(e){}}
+function gunshot(){if(!audioCtx)return; const t=audioCtx.currentTime; const master=audioCtx.createGain(); const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain(); const n=audioCtx.createBufferSource(); const b=audioCtx.createBuffer(1,audioCtx.sampleRate*.12,audioCtx.sampleRate); const d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length); n.buffer=b; const ng=audioCtx.createGain(); ng.gain.setValueAtTime(.0001,t); ng.gain.exponentialRampToValueAtTime(.7,t+.002); ng.gain.exponentialRampToValueAtTime(.0001,t+.11); osc.type='sawtooth'; osc.frequency.setValueAtTime(125,t); osc.frequency.exponentialRampToValueAtTime(48,t+.09); gain.gain.setValueAtTime(.0001,t); gain.gain.exponentialRampToValueAtTime(.4,t+.002); gain.gain.exponentialRampToValueAtTime(.0001,t+.09); osc.connect(gain).connect(master); n.connect(ng).connect(master); master.connect(audioCtx.destination); osc.start(t); osc.stop(t+.1); n.start(t); n.stop(t+.12);}
 const $=s=>document.querySelector(s);
 const home=$('#home'),session=$('#session'),result=$('#result');
 const video=$('#video'),overlay=$('#overlay'),ctx=overlay.getContext('2d');
 const targetImg=$('#target'),targetMarks=$('#targetMarks'),tm=targetMarks.getContext('2d');
-let stream=null, raf=0, running=false, processing=false, shots=[], lastRed=0, lastPoint=null, work=document.createElement('canvas'),wc=work.getContext('2d',{willReadFrequently:true});
+let stream=null, raf=0, running=false, processing=false, shots=[], lastRed=0, lastPoint=null, laserOn=false, lastLaserSeen=0, frameNo=0, work=document.createElement('canvas'),wc=work.getContext('2d',{willReadFrequently:true});
 
 function show(el){[home,session,result].forEach(x=>x.classList.remove('active'));el.classList.add('active')}
 function resize(){const r=video.getBoundingClientRect();overlay.width=Math.max(1,Math.round(r.width*devicePixelRatio));overlay.height=Math.max(1,Math.round(r.height*devicePixelRatio));ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
@@ -25,7 +29,7 @@ async function start(){
     stream=await getCamera(); video.srcObject=stream;
     await new Promise((resolve,reject)=>{video.onloadedmetadata=resolve;setTimeout(()=>reject(new Error('Tiempo de espera de la cámara agotado.')),8000)});
     await video.play(); resize(); window.addEventListener('resize',resize);
-    running=true; processing=false; shots=[]; lastRed=0; lastPoint=null; updateStats(); drawTarget();
+    running=true; processing=false; shots=[]; lastRed=0; lastPoint=null; laserOn=false; lastLaserSeen=0; frameNo=0; updateStats(); drawTarget();
     status('CÁMARA ACTIVA',true); requestAnimationFrame(loop);
   }catch(e){
     stopCamera(); show(home); const msg=e.name==='NotAllowedError'?'Permiso de cámara denegado. En iPhone: Ajustes > Safari > Cámara > Permitir.':(e.message||'No se pudo iniciar la cámara.'); $('#homeError').textContent=msg; $('#homeError').classList.remove('hidden');
@@ -35,14 +39,85 @@ function stopCamera(){running=false;if(stream){stream.getTracks().forEach(t=>t.s
 function finish(){stopCamera();$('#resultShots').textContent=shots.length;$('#totalResult').textContent=shots.reduce((a,s)=>a+s.score,0);$('#resultAverage').textContent=shots.length?(shots.reduce((a,s)=>a+s.score,0)/shots.length).toFixed(1):'0.0';$('#resultBest').textContent=shots.length?Math.max(...shots.map(s=>s.score)):0;show(result)}
 
 function loop(){if(!running)return; detectLaser(); raf=requestAnimationFrame(loop)}
+
+// Detector V11: busca el punto rojo directamente en la imagen de cámara,
+// con mayor resolución y detección por evento (aparece/desaparece), no por
+// cantidad fija de píxeles. Esto funciona mejor cuando el punto láser ocupa
+// sólo 1–10 píxeles en el iPhone.
 function detectLaser(){
-  if(video.readyState<2||processing)return; processing=true;
-  const w=320,h=Math.max(240,Math.round(320*video.videoHeight/video.videoWidth)); work.width=w;work.height=h;wc.drawImage(video,0,0,w,h);
-  const d=wc.getImageData(0,0,w,h).data; let sx=0,sy=0,n=0,max=0;
-  for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const i=(y*w+x)*4,r=d[i],g=d[i+1],b=d[i+2];const v=r-(g*.75+b*.75);if(r>155&&r>g*1.45&&r>b*1.45&&v>35){sx+=x;sy+=y;n++;if(r>max)max=r}}
-  const now=performance.now();
-  if(n>=2&&n<=500){const x=(sx/n)/w,y=(sy/n)/h;if(max>205&&(now-lastRed>240)&&(!lastPoint||Math.hypot(x-lastPoint.x,y-lastPoint.y)>.018)){registerShot(x,y);lastRed=now;lastPoint={x,y}}}
-  processing=false;
+  if(video.readyState<2||processing)return;
+  processing=true;
+  try{
+    const vw=video.videoWidth||1280, vh=video.videoHeight||720;
+    const w=480, h=Math.max(270,Math.round(w*vh/vw));
+    work.width=w; work.height=h;
+    wc.drawImage(video,0,0,w,h);
+    const d=wc.getImageData(0,0,w,h).data;
+
+    let best=-1, bx=0, by=0, br=0, bg=0, bb=0;
+    // Primero encontramos el píxel rojo más fuerte.
+    for(let y=1;y<h-1;y++){
+      const row=y*w*4;
+      for(let x=1;x<w-1;x++){
+        const i=row+x*4, r=d[i], g=d[i+1], b=d[i+2];
+        const red=r-Math.max(g,b);
+        const score=red + Math.max(0,r-150)*0.45;
+        if(r>125 && red>42 && r>g*1.20 && r>b*1.20 && score>best){
+          best=score; bx=x; by=y; br=r; bg=g; bb=b;
+        }
+      }
+    }
+
+    const now=performance.now();
+    let found=false, u=0, v=0, strength=0, area=0;
+
+    if(best>=48){
+      // Agrupamos alrededor del máximo. El láser puede ser diminuto.
+      let sx=0,sy=0,sw=0;
+      const radius=7;
+      for(let y=Math.max(1,by-radius);y<=Math.min(h-2,by+radius);y++){
+        for(let x=Math.max(1,bx-radius);x<=Math.min(w-2,bx+radius);x++){
+          const i=(y*w+x)*4, r=d[i], g=d[i+1], b=d[i+2];
+          const red=r-Math.max(g,b);
+          if(r>115 && red>32 && r>g*1.16 && r>b*1.16){
+            const dist=Math.hypot(x-bx,y-by);
+            if(dist<=radius){
+              const weight=Math.max(1,red);
+              sx+=x*weight; sy+=y*weight; sw+=weight; area++;
+            }
+          }
+        }
+      }
+      if(sw>0){
+        u=(sx/sw)/w; v=(sy/sw)/h; strength=best; found=area<=260;
+      }
+    }
+
+    // Evita que objetos grandes rojos (ropa, luces, carteles) se conviertan
+    // en disparos: el candidato debe ser pequeño y muy dominante en rojo.
+    if(found){
+      if(now-lastLaserSeen>120) laserOn=false;
+      const moved=!lastPoint || Math.hypot(u-lastPoint.x,v-lastPoint.y)>0.012;
+      const rising=!laserOn;
+      const cooldown=now-lastRed>280;
+      if((rising||moved) && cooldown){
+        registerShot(u,v);
+        lastRed=now;
+        lastPoint={x:u,y:v};
+        laserOn=true;
+        status(`LÁSER DETECTADO · ${Math.round(strength)}`,true);
+      }
+      lastLaserSeen=now;
+    }else if(laserOn && now-lastLaserSeen>110){
+      laserOn=false;
+    }
+
+    // Si no hay disparo, mantenemos el indicador de cámara activo.
+    if(!found && now-lastRed>700) status('CÁMARA ACTIVA · APUNTA AL BLANCO',true);
+    frameNo++;
+  }catch(e){
+    console.warn('Detector:',e);
+  }finally{processing=false;}
 }
 function registerShot(u,v){
   const score=scoreAt(u,v);shots.push({u,v,score});updateStats();drawImpact(u,v,shots.length,score)}
