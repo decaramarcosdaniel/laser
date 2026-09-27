@@ -1,135 +1,171 @@
-
-let audioCtx=null;
-function setupAudio(){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume();}catch(e){}}
-function gunshot(){if(!audioCtx)return; const t=audioCtx.currentTime; const master=audioCtx.createGain(); const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain(); const n=audioCtx.createBufferSource(); const b=audioCtx.createBuffer(1,audioCtx.sampleRate*.12,audioCtx.sampleRate); const d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length); n.buffer=b; const ng=audioCtx.createGain(); ng.gain.setValueAtTime(.0001,t); ng.gain.exponentialRampToValueAtTime(.7,t+.002); ng.gain.exponentialRampToValueAtTime(.0001,t+.11); osc.type='sawtooth'; osc.frequency.setValueAtTime(125,t); osc.frequency.exponentialRampToValueAtTime(48,t+.09); gain.gain.setValueAtTime(.0001,t); gain.gain.exponentialRampToValueAtTime(.4,t+.002); gain.gain.exponentialRampToValueAtTime(.0001,t+.09); osc.connect(gain).connect(master); n.connect(ng).connect(master); master.connect(audioCtx.destination); osc.start(t); osc.stop(t+.1); n.start(t); n.stop(t+.12);}
 const $=s=>document.querySelector(s);
-const home=$('#home'),session=$('#session'),result=$('#result');
-const video=$('#video'),overlay=$('#overlay'),ctx=overlay.getContext('2d');
-const targetImg=$('#target'),targetMarks=$('#targetMarks'),tm=targetMarks.getContext('2d');
-let stream=null, raf=0, running=false, processing=false, shots=[], lastRed=0, lastPoint=null, laserOn=false, lastLaserSeen=0, frameNo=0, work=document.createElement('canvas'),wc=work.getContext('2d',{willReadFrequently:true});
+const video=$("#video"), overlay=$("#overlay"), ctx=overlay.getContext("2d",{willReadFrequently:true});
+const target=$("#target"), box=$("#targetBox"), marks=$("#marks"), mctx=marks.getContext("2d");
+const work=document.createElement("canvas"), wc=work.getContext("2d",{willReadFrequently:true});
+const shotAudio=new Audio("assets/disparo.wav");shotAudio.preload="auto";shotAudio.volume=.85;
 
-function show(el){[home,session,result].forEach(x=>x.classList.remove('active'));el.classList.add('active')}
-function resize(){const r=video.getBoundingClientRect();overlay.width=Math.max(1,Math.round(r.width*devicePixelRatio));overlay.height=Math.max(1,Math.round(r.height*devicePixelRatio));ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
-function status(t,ok=false){$('#cameraStatus').textContent=t;$('#cameraStatus').classList.toggle('ok',ok)}
+let stream=null,running=false,paused=false,raf=0,shots=[],total=0;
+let detectionStart=0,armed=true,absentSince=0,lastShot=0,currentPoint=null;
+const MIN_ON=55,MIN_OFF=260,COOLDOWN=700;
 
-async function getCamera(){
-  if(!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador no permite acceder a la cámara.');
-  const common={audio:false,video:{facingMode:{exact:'environment'},width:{ideal:1280},height:{ideal:1920}}};
-  try{return await navigator.mediaDevices.getUserMedia(common)}
-  catch(e){
-    if(e.name==='OverconstrainedError'||e.name==='NotFoundError') return await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:1920}}});
-    throw e;
+function sizeCanvases(){
+  const vr=video.getBoundingClientRect();
+  overlay.width=Math.max(1,Math.round(vr.width*devicePixelRatio));
+  overlay.height=Math.max(1,Math.round(vr.height*devicePixelRatio));
+  sizeMarks();drawOverlay(currentPoint);
+}
+function sizeMarks(){
+  const r=target.getBoundingClientRect();
+  if(!r.width||!r.height)return;
+  marks.width=Math.max(1,Math.round(r.width*devicePixelRatio));
+  marks.height=Math.max(1,Math.round(r.height*devicePixelRatio));
+  marks.style.width=r.width+"px";
+  marks.style.height=r.height+"px";
+  marks.style.left=(target.offsetLeft)+"px";
+  marks.style.top=(target.offsetTop)+"px";
+  drawMarks();
+}
+addEventListener("resize",sizeCanvases);
+target.addEventListener("load",sizeMarks);
+target.addEventListener("error",()=>$("#targetError").classList.remove("hidden"));
+
+function detectRed(){
+  const W=720,H=Math.max(480,Math.round(720*(video.videoHeight/video.videoWidth||1.5)));
+  work.width=W;work.height=H;wc.drawImage(video,0,0,W,H);
+  const d=wc.getImageData(0,0,W,H).data;
+  let best=-1,bx=0,by=0;
+  for(let y=1;y<H-1;y+=2)for(let x=1;x<W-1;x+=2){
+    const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2],s=r-Math.max(g,b);
+    if(r>145&&r>g*1.65&&r>b*1.55&&s>85&&s>best){best=s;bx=x;by=y}
   }
+  if(best<85)return null;
+  let count=0,sx=0,sy=0;
+  for(let y=Math.max(0,by-5);y<=Math.min(H-1,by+5);y++)
+    for(let x=Math.max(0,bx-5);x<=Math.min(W-1,bx+5);x++){
+      const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2];
+      if(r>125&&r>g*1.45&&r>b*1.35&&r-Math.max(g,b)>55){count++;sx+=x;sy+=y}
+    }
+  if(count<2)return null;
+  return {x:sx/count/W,y:sy/count/H};
+}
+
+/* En esta versión la imagen inferior siempre se muestra.
+   El marcador se dibuja directamente sobre sus dimensiones reales. */
+function cameraToTarget(p){
+  // Primer mapeo automático para cuando el blanco ocupa la cámara.
+  // Mantiene el punto dentro del blanco visible.
+  return {u:Math.max(.02,Math.min(.98,p.x)),v:Math.max(.02,Math.min(.98,p.y))};
+}
+
+function scoreAt(u,v){
+  const x=u*1074,y=v*1432;
+  if(((x-548)/110)**2+((y-190)/150)**2<1)return 5;
+  if(((x-570)/175)**2+((y-895)/390)**2<1)return 5;
+  if(x>=355&&x<=510&&y>=300&&y<=760)return 4;
+  if(x>=590&&x<=770&&y>=300&&y<=790)return 4;
+  if(x>=285&&x<=520&&y>=780&&y<=1410)return 4;
+  if(x>=610&&x<=840&&y>=780&&y<=1410)return 4;
+  if(x<360&&y>360&&y<1050)return 3;
+  if(x>760&&y>350&&y<1260)return 2;
+  return 0;
+}
+
+function drawOverlay(p){
+  ctx.clearRect(0,0,overlay.width,overlay.height);
+  if(!p)return;
+  const x=p.x*overlay.width,y=p.y*overlay.height,r=12*devicePixelRatio;
+  ctx.strokeStyle="#ff3030";ctx.lineWidth=3*devicePixelRatio;
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle="#fff";ctx.lineWidth=devicePixelRatio;
+  ctx.beginPath();ctx.moveTo(x-r*1.7,y);ctx.lineTo(x+r*1.7,y);ctx.moveTo(x,y-r*1.7);ctx.lineTo(x,y+r*1.7);ctx.stroke();
+}
+
+function drawMarks(){
+  mctx.clearRect(0,0,marks.width,marks.height);
+  shots.forEach((s,i)=>{
+    const x=s.u*marks.width,y=s.v*marks.height,r=13*devicePixelRatio;
+    mctx.strokeStyle="#ff3030";mctx.lineWidth=3*devicePixelRatio;
+    mctx.beginPath();mctx.arc(x,y,r,0,Math.PI*2);mctx.stroke();
+    mctx.fillStyle="#ff3030";mctx.beginPath();mctx.arc(x,y,3.5*devicePixelRatio,0,Math.PI*2);mctx.fill();
+    mctx.fillStyle="#fff";mctx.font=`bold ${13*devicePixelRatio}px Arial`;
+    mctx.textAlign="center";mctx.textBaseline="middle";mctx.fillText(String(i+1),x,y);
+  });
+}
+
+function registerShot(p){
+  const now=performance.now();
+  if(now-lastShot<COOLDOWN)return;
+  lastShot=now;
+  const q=cameraToTarget(p),score=scoreAt(q.u,q.v);
+  shots.push({u:q.u,v:q.v,score});total+=score;
+  $("#shots").textContent=shots.length;$("#points").textContent=total;$("#last").textContent=score;
+  $("#flash").classList.remove("on");void $("#flash").offsetWidth;$("#flash").classList.add("on");
+  try{shotAudio.currentTime=0;const r=shotAudio.play();if(r?.catch)r.catch(()=>{})}catch(e){}
+  drawMarks();
+}
+
+function loop(){
+  if(!running)return;
+  if(!paused){
+    const p=detectRed(),now=performance.now();
+    if(p){
+      currentPoint=p;drawOverlay(p);
+      $("#status").textContent=armed?"LÁSER DETECTADO":"ESPERANDO FIN DEL DISPARO…";
+      if(armed){
+        if(!detectionStart)detectionStart=now;
+        if(now-detectionStart>=MIN_ON){
+          registerShot(p);armed=false;absentSince=0;detectionStart=0;
+        }
+      }
+    }else{
+      currentPoint=null;drawOverlay();
+      $("#status").textContent=armed?"BUSCANDO LÁSER…":"RECARGANDO…";
+      detectionStart=0;
+      if(!armed){
+        if(!absentSince)absentSince=now;
+        if(now-absentSince>=MIN_OFF)armed=true;
+      }
+    }
+  }
+  raf=requestAnimationFrame(loop);
+}
+
+async function openCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){alert("Este navegador no permite acceder a la cámara.");return false}
+  try{
+    if(stream)stream.getTracks().forEach(t=>t.stop());
+    try{stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{exact:"environment"},width:{ideal:1280},height:{ideal:1920}}})}
+    catch(e){stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:1920}}})}
+    video.srcObject=stream;
+    await new Promise(r=>{if(video.readyState>=1)r();else video.onloadedmetadata=r});
+    await video.play();
+    requestAnimationFrame(sizeCanvases);
+    return true;
+  }catch(e){alert("No se pudo abrir la cámara. Revisá los permisos de Safari.");return false}
 }
 
 async function start(){
-  $('#homeError').classList.add('hidden');
-  show(session); status('SOLICITANDO CÁMARA…');
-  try{
-    stream=await getCamera(); video.srcObject=stream;
-    await new Promise((resolve,reject)=>{video.onloadedmetadata=resolve;setTimeout(()=>reject(new Error('Tiempo de espera de la cámara agotado.')),8000)});
-    await video.play(); resize(); window.addEventListener('resize',resize);
-    running=true; processing=false; shots=[]; lastRed=0; lastPoint=null; laserOn=false; lastLaserSeen=0; frameNo=0; updateStats(); drawTarget();
-    status('CÁMARA ACTIVA',true); requestAnimationFrame(loop);
-  }catch(e){
-    stopCamera(); show(home); const msg=e.name==='NotAllowedError'?'Permiso de cámara denegado. En iPhone: Ajustes > Safari > Cámara > Permitir.':(e.message||'No se pudo iniciar la cámara.'); $('#homeError').textContent=msg; $('#homeError').classList.remove('hidden');
-  }
+  // Desbloquea el audio en iPhone desde la interacción del usuario.
+  try{await shotAudio.play();shotAudio.pause();shotAudio.currentTime=0}catch(e){}
+  $("#home").classList.add("hidden");$("#result").classList.add("hidden");$("#session").classList.remove("hidden");
+  shots=[];total=0;armed=true;detectionStart=0;absentSince=0;lastShot=0;
+  $("#shots").textContent="0";$("#points").textContent="0";$("#last").textContent="—";
+  drawMarks();
+  // Garantiza que el blanco quede visible aunque el video tarde en arrancar.
+  if(!await openCamera()){$("#session").classList.add("hidden");$("#home").classList.remove("hidden");return}
+  requestAnimationFrame(sizeCanvases);
+  running=true;paused=false;$("#pause").textContent="PAUSAR";loop();
 }
-function stopCamera(){running=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;cancelAnimationFrame(raf)}
-function finish(){stopCamera();$('#resultShots').textContent=shots.length;$('#totalResult').textContent=shots.reduce((a,s)=>a+s.score,0);$('#resultAverage').textContent=shots.length?(shots.reduce((a,s)=>a+s.score,0)/shots.length).toFixed(1):'0.0';$('#resultBest').textContent=shots.length?Math.max(...shots.map(s=>s.score)):0;show(result)}
 
-function loop(){if(!running)return; detectLaser(); raf=requestAnimationFrame(loop)}
-
-// Detector V11: busca el punto rojo directamente en la imagen de cámara,
-// con mayor resolución y detección por evento (aparece/desaparece), no por
-// cantidad fija de píxeles. Esto funciona mejor cuando el punto láser ocupa
-// sólo 1–10 píxeles en el iPhone.
-function detectLaser(){
-  if(video.readyState<2||processing)return;
-  processing=true;
-  try{
-    const vw=video.videoWidth||1280, vh=video.videoHeight||720;
-    const w=480, h=Math.max(270,Math.round(w*vh/vw));
-    work.width=w; work.height=h;
-    wc.drawImage(video,0,0,w,h);
-    const d=wc.getImageData(0,0,w,h).data;
-
-    let best=-1, bx=0, by=0, br=0, bg=0, bb=0;
-    // Primero encontramos el píxel rojo más fuerte.
-    for(let y=1;y<h-1;y++){
-      const row=y*w*4;
-      for(let x=1;x<w-1;x++){
-        const i=row+x*4, r=d[i], g=d[i+1], b=d[i+2];
-        const red=r-Math.max(g,b);
-        const score=red + Math.max(0,r-150)*0.45;
-        if(r>125 && red>42 && r>g*1.20 && r>b*1.20 && score>best){
-          best=score; bx=x; by=y; br=r; bg=g; bb=b;
-        }
-      }
-    }
-
-    const now=performance.now();
-    let found=false, u=0, v=0, strength=0, area=0;
-
-    if(best>=48){
-      // Agrupamos alrededor del máximo. El láser puede ser diminuto.
-      let sx=0,sy=0,sw=0;
-      const radius=7;
-      for(let y=Math.max(1,by-radius);y<=Math.min(h-2,by+radius);y++){
-        for(let x=Math.max(1,bx-radius);x<=Math.min(w-2,bx+radius);x++){
-          const i=(y*w+x)*4, r=d[i], g=d[i+1], b=d[i+2];
-          const red=r-Math.max(g,b);
-          if(r>115 && red>32 && r>g*1.16 && r>b*1.16){
-            const dist=Math.hypot(x-bx,y-by);
-            if(dist<=radius){
-              const weight=Math.max(1,red);
-              sx+=x*weight; sy+=y*weight; sw+=weight; area++;
-            }
-          }
-        }
-      }
-      if(sw>0){
-        u=(sx/sw)/w; v=(sy/sw)/h; strength=best; found=area<=260;
-      }
-    }
-
-    // Evita que objetos grandes rojos (ropa, luces, carteles) se conviertan
-    // en disparos: el candidato debe ser pequeño y muy dominante en rojo.
-    if(found){
-      if(now-lastLaserSeen>120) laserOn=false;
-      const moved=!lastPoint || Math.hypot(u-lastPoint.x,v-lastPoint.y)>0.012;
-      const rising=!laserOn;
-      const cooldown=now-lastRed>280;
-      if((rising||moved) && cooldown){
-        registerShot(u,v);
-        lastRed=now;
-        lastPoint={x:u,y:v};
-        laserOn=true;
-        status(`LÁSER DETECTADO · ${Math.round(strength)}`,true);
-      }
-      lastLaserSeen=now;
-    }else if(laserOn && now-lastLaserSeen>110){
-      laserOn=false;
-    }
-
-    // Si no hay disparo, mantenemos el indicador de cámara activo.
-    if(!found && now-lastRed>700) status('CÁMARA ACTIVA · APUNTA AL BLANCO',true);
-    frameNo++;
-  }catch(e){
-    console.warn('Detector:',e);
-  }finally{processing=false;}
+function finish(){
+  running=false;cancelAnimationFrame(raf);
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  $("#rs").textContent=shots.length;$("#rp").textContent=total;
+  $("#ra").textContent=shots.length?(total/shots.length).toFixed(1):"0.0";
+  $("#rb").textContent=shots.length?Math.max(...shots.map(s=>s.score)):0;
+  $("#session").classList.add("hidden");$("#result").classList.remove("hidden");
 }
-function registerShot(u,v){
-  const score=scoreAt(u,v);shots.push({u,v,score});updateStats();drawImpact(u,v,shots.length,score)}
-function scoreAt(u,v){
-  // Approximate mapping for the supplied target. It is intentionally conservative until automatic target calibration is improved.
-  const x=u*1060,y=v*1484;
-  const cx=530,cy=730; const dx=(x-cx)/470,dy=(y-cy)/650; const r=Math.sqrt(dx*dx+dy*dy);
-  if(r<.13)return 5;if(r<.28)return 4;if(r<.48)return 3;if(r<.70)return 2;if(r<.88)return 1;return 0;
-}
-function updateStats(){const p=shots.reduce((a,s)=>a+s.score,0);$('#shots').textContent=shots.length;$('#points').textContent=p;$('#average').textContent=shots.length?(p/shots.length).toFixed(1):'0.0';$('#shotCount').textContent=`${shots.length} ${shots.length===1?'DISPARO':'DISPAROS'}`;$('#liveScore').textContent=`${p} PTS`;$('#last').textContent=shots.length?`ÚLTIMO: ${shots.at(-1).score}`:'—'}
-function drawTarget(){const r=targetMarks.getBoundingClientRect();targetMarks.width=Math.max(1,Math.round(r.width*devicePixelRatio));targetMarks.height=Math.max(1,Math.round(r.height*devicePixelRatio));tm.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);tm.clearRect(0,0,r.width,r.height);shots.forEach((s,i)=>drawMark(s.u,s.v,i+1,s.score,false))}
-function drawMark(u,v,num,score,clear=true){const r=targetMarks.getBoundingClientRect();if(clear)drawTarget();const x=u*r.width,y=v*r.height;tm.save();tm.strokeStyle='#e11';tm.fillStyle='#e11';tm.lineWidth=2.5;tm.beginPath();tm.arc(x,y,10,0,Math.PI*2);tm.stroke();tm.beginPath();tm.arc(x,y,3,0,Math.PI*2);tm.fill();tm.font='bold 11px Arial';tm.fillText(`${num} · ${score}`,x+13,y-8);tm.restore()}
-window.addEventListener('resize',()=>{if(session.classList.contains('active'))drawTarget()});
-$('#start').onclick=start;$('#finish').onclick=finish;$('#again').onclick=()=>{show(home)};
-targetImg.onload=drawTarget;
+$("#startBtn").onclick=start;
+$("#finish").onclick=finish;
+$("#pause").onclick=()=>{paused=!paused;$("#pause").textContent=paused?"CONTINUAR":"PAUSAR"};
+$("#again").onclick=()=>{$("#result").classList.add("hidden");$("#home").classList.remove("hidden")};

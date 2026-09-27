@@ -1,53 +1,61 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#111"><meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
-<title>Laser Training</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0b0b">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+<title>Laser Training V14</title>
 </head>
 <body>
-<div id="app">
-  <section id="home" class="screen active">
-    <div class="brand"><div class="brand-mark">●</div><h1>LASER TRAINING</h1><p>Entrenamiento con láser</p></div>
-    <button id="start" class="primary">INICIAR</button>
-    <p class="hint">La cámara se abrirá al iniciar.</p>
-    <p id="homeError" class="error hidden"></p>
-  </section>
+<div class="app">
+<section id="home" class="screen home">
+  <div class="brand">LASER <span>TRAINING</span></div>
+  <p>Entrenamiento de tiro seco</p>
+  <button id="startBtn" class="btn primary">INICIAR</button>
+  <small>Cámara trasera · láser rojo · sonido</small>
+</section>
 
-  <section id="session" class="screen">
-    <div class="camera-wrap">
-      <video id="video" autoplay playsinline muted></video>
-      <canvas id="overlay"></canvas>
-      <div id="cameraStatus" class="camera-status">INICIANDO CÁMARA…</div>
-      <div class="topbar">
-        <span id="shotCount">0 DISPAROS</span>
-        <span id="liveScore">0 PTS</span>
-      </div>
-      <button id="finish" class="finish">FINALIZAR</button>
-    </div>
+<section id="session" class="screen session hidden">
+  <div class="camera">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div class="stats"><span>DISPAROS <b id="shots">0</b></span><span>PUNTOS <b id="points">0</b></span></div>
+    <div id="status" class="status">PREPARANDO…</div>
+    <div id="flash" class="flash"></div>
+  </div>
 
-    <div class="dashboard">
-      <div class="stat"><small>DISPAROS</small><b id="shots">0</b></div>
-      <div class="stat"><small>PUNTOS</small><b id="points">0</b></div>
-      <div class="stat"><small>PROMEDIO</small><b id="average">0.0</b></div>
+  <div class="targetPanel">
+    <div class="targetHead">
+      <span>BLANCO · IMPACTOS</span>
+      <span>ÚLTIMO: <b id="last">—</b></span>
     </div>
+    <div id="targetBox" class="targetBox">
+      <img id="target" src="assets/blanco.jpg" alt="Blanco de entrenamiento"
+           onerror="document.getElementById('targetError').classList.remove('hidden')">
+      <canvas id="marks"></canvas>
+      <div id="targetError" class="targetError hidden">NO SE PUDO CARGAR EL BLANCO</div>
+    </div>
+  </div>
 
-    <div class="target-card">
-      <div class="target-head"><b>IMPACTOS</b><span id="last">—</span></div>
-      <div class="target-view"><img id="target" src="assets/blanco.jpg" alt="Blanco de tiro"><canvas id="targetMarks"></canvas></div>
-    </div>
-  </section>
+  <div class="controls">
+    <button id="pause" class="btn secondary">PAUSAR</button>
+    <button id="finish" class="btn danger">FINALIZAR</button>
+  </div>
+</section>
 
-  <section id="result" class="screen">
-    <div class="result-box"><span>RESULTADO</span><strong id="totalResult">0</strong><small>PUNTOS</small></div>
-    <div class="result-grid">
-      <div><small>DISPAROS</small><b id="resultShots">0</b></div>
-      <div><small>PROMEDIO</small><b id="resultAverage">0.0</b></div>
-      <div><small>MEJOR</small><b id="resultBest">0</b></div>
-    </div>
-    <button id="again" class="primary">NUEVA SESIÓN</button>
-  </section>
+<section id="result" class="screen result hidden">
+  <div class="brand">RESULTADO</div>
+  <div class="card">
+    <div><small>DISPAROS</small><b id="rs">0</b></div>
+    <div><small>PUNTOS</small><b id="rp">0</b></div>
+    <div><small>PROMEDIO</small><b id="ra">0.0</b></div>
+    <div><small>MEJOR</small><b id="rb">0</b></div>
+  </div>
+  <button id="again" class="btn primary">NUEVA SESIÓN</button>
+</section>
 </div>
 <script src="app.js"></script>
-</body></html>
+</body>
+</html>
