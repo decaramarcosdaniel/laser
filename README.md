@@ -1,22 +1,15 @@
-# LASER TRAINING V8
+# LASER TRAINING V9
 
-Incluye:
-- calibración manual de 4 esquinas del blanco en la cámara;
-- transformación proyectiva (homografía) para corregir perspectiva;
-- proyección del impacto a coordenadas normalizadas del blanco;
-- imagen del blanco suministrado con marcadores numerados;
-- puntuación 0–5 inicial;
-- historial de impactos.
+Interfaz simplificada:
+- Un único botón INICIAR.
+- Reconocimiento automático del blanco, sin tocar cuatro esquinas.
+- Cámara trasera del iPhone.
+- Detección del punto láser rojo.
+- Mapa visual de impactos.
+- Puntuación inicial 0–5.
+- Pausar y finalizar durante la sesión.
+- Configuración escondida en ⚙️.
 
-## Publicación
-Subir/reemplazar `index.html`, `styles.css`, `app.js`, `manifest.json` y la carpeta `assets` en `/laser/`.
+Publicar todos los archivos y la carpeta assets en /laser/.
 
-## Calibración
-1. Activar cámara.
-2. Iniciar calibración.
-3. Tocar las cuatro esquinas físicas del blanco en orden:
-   arriba izquierda, arriba derecha, abajo derecha, abajo izquierda.
-4. Iniciar sesión.
-5. Cada detección se proyectará sobre la imagen del blanco.
-
-La puntuación de las regiones 0–5 es todavía una digitalización inicial de la plantilla. La homografía sí corrige la perspectiva; para puntuación milimétrica conviene digitalizar los contornos exactos de cada zona.
+Nota: el reconocimiento automático del blanco de esta versión es un detector visual inicial basado en contraste. Para una versión de alta precisión se debe sustituir por un detector específico del patrón del blanco y validar con fotografías reales del blanco a distintas distancias e inclinaciones.
