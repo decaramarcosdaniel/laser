@@ -1,1 +1,56 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#080b10"><title>Laser Training V6</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css"></head><body><header><div><small>LASER TRAINING</small><h1>Detector de disparos</h1></div><b id="state" class="off">CÁMARA OFF</b></header><main><section class="camera"><video id="video" autoplay playsinline muted></video><canvas id="overlay"></canvas><div id="startBox"><div>📷</div><h2>Activar cámara</h2><p>Usá la cámara trasera del iPhone.</p><button id="start">ACTIVAR CÁMARA</button></div><div id="laser">● ESPERANDO LÁSER</div><div id="flash">DISPARO DETECTADO</div></section><section class="buttons"><button id="cal" disabled>🎯 CALIBRAR</button><button id="go" disabled>▶ INICIAR</button><button id="stop" disabled>■ DETENER</button><button id="reload">↻ REINICIAR</button></section><section class="stats"><div><b id="n">0</b><small>DISPAROS</small></div><div><b id="last">—</b><small>ÚLTIMO INTERVALO</small></div><div><b id="avg">—</b><small>PROMEDIO</small></div><div><b id="fps">0</b><small>FPS</small></div></section><section class="panel"><h2>Detector</h2><p id="info">Activá la cámara para comenzar.</p><label>Sensibilidad <b id="sv">72%</b></label><input id="sens" type="range" min="45" max="92" value="72"><label>Área mínima <b id="av">4</b></label><input id="area" type="range" min="1" max="60" value="4"><label>Área máxima <b id="xv">180</b></label><input id="maxarea" type="range" min="20" max="1000" value="180"><label>Bloqueo <b id="cv">450 ms</b></label><input id="cool" type="range" min="150" max="1200" step="50" value="450"></section><section class="panel"><div class="head"><h2>Disparos</h2><button id="clear">Limpiar</button></div><div id="list">Sin disparos.</div></section></main><canvas id="work"></canvas><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#080b10">
+<title>Laser Training V8</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header><div><small>LASER TRAINING V8</small><h1>Detección y puntuación</h1></div><b id="state" class="off">CÁMARA OFF</b></header>
+<main>
+<section class="camera">
+<video id="video" autoplay playsinline muted></video><canvas id="overlay"></canvas>
+<div id="startBox"><div>📷</div><h2>Activar cámara</h2><p>Colocá el blanco completo dentro de la cámara.</p><button id="start">ACTIVAR CÁMARA</button></div>
+<div id="laser">● ESPERANDO LÁSER</div>
+</section>
+
+<section class="panel">
+<div class="panel-head"><h2>1. Calibrar perspectiva</h2><span id="calState">0 / 4</span></div>
+<p>Con el blanco completo visible, tocá sus cuatro esquinas en este orden: <b>arriba izquierda → arriba derecha → abajo derecha → abajo izquierda</b>.</p>
+<div class="cal-buttons"><button id="calibrate" disabled>🎯 INICIAR CALIBRACIÓN</button><button id="resetCal">↺ BORRAR</button></div>
+</section>
+
+<section class="buttons">
+<button id="go" disabled>▶ INICIAR SESIÓN</button><button id="stop" disabled>■ DETENER</button>
+<button id="reload">↻ REINICIAR</button><button id="clear">🗑 LIMPIAR IMPACTOS</button>
+</section>
+
+<section class="stats">
+<div><b id="shots">0</b><small>DISPAROS</small></div><div><b id="score">0</b><small>PUNTOS</small></div>
+<div><b id="avg">0.0</b><small>PROMEDIO</small></div><div><b id="last">—</b><small>ÚLTIMO</small></div>
+</section>
+
+<section class="target-panel">
+<div class="panel-head"><h2>Mapa real de impactos</h2><span id="targetStatus">Calibración requerida</span></div>
+<div class="target-wrap"><img id="target" src="assets/blanco.jpg" alt="Blanco"><canvas id="marks"></canvas></div>
+</section>
+
+<section class="panel">
+<h2>Disparos</h2><div id="list"><p class="muted">Todavía no hay disparos.</p></div>
+</section>
+
+<section class="panel">
+<h2>Detector</h2><p id="info">La cámara debe permanecer apuntando al blanco durante toda la sesión.</p>
+<label>Sensibilidad <b id="sv">72%</b></label><input id="sens" type="range" min="45" max="92" value="72">
+<label>Área mínima <b id="av">4</b></label><input id="area" type="range" min="1" max="60" value="4">
+<label>Área máxima <b id="xv">180</b></label><input id="maxarea" type="range" min="20" max="1000" value="180">
+<label>Bloqueo entre disparos <b id="cv">450 ms</b></label><input id="cool" type="range" min="150" max="1200" step="50" value="450">
+</section>
+<canvas id="work"></canvas>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
