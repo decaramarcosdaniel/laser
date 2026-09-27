@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
+<title>Laser Training</title>
+</head>
+<body>
+<header><div><strong>LASER TRAINING</strong><small>Detector de impactos</small></div><span id="status" class="pill">Cámara detenida</span></header>
+<main>
+<section class="camera-card"><video id="video" playsinline muted></video><canvas id="overlay"></canvas><div id="message">Iniciá la cámara para comenzar</div></section>
+<section class="controls">
+<button id="start" class="primary">Iniciar cámara</button><button id="calibrate">Calibrar blanco</button>
+<label>Sensibilidad <input id="sensitivity" type="range" min="20" max="90" value="55"><output id="sensOut">55</output></label>
+<label>Anti-rebote <input id="cooldown" type="range" min="150" max="1200" value="450"><output id="coolOut">450 ms</output></label>
+</section>
+<section class="stats"><div><b id="shots">0</b><span>Disparos</span></div><div><b id="hits">0</b><span>Detectados</span></div><div><b id="avg">—</b><span>Promedio X/Y</span></div></section>
+<section class="target"><h2>Blanco</h2><div class="target-paper"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="ring r4"></div><div class="ring r5"></div><div class="cross"></div></div><p>Colocá el blanco dentro del encuadre y pulsá “Calibrar blanco”.</p></section>
+<section><h2>Últimos impactos</h2><div id="log" class="log"><p class="empty">Todavía no hay disparos.</p></div></section>
+</main>
+<script src="app.js"></script>
+</body></html>
