@@ -1,98 +1,60 @@
 const $=s=>document.querySelector(s);
-const video=$("#video"),overlay=$("#overlay"),oc=overlay.getContext("2d"),work=$("#work"),wc=work.getContext("2d",{willReadFrequently:true});
-const target=$("#target"),marks=$("#marks"),mc=marks.getContext("2d");
-let stream=null,active=false,running=false,paused=false,raf=0,prev=null,lastShot=0,shots=[];
-let cfg={sens:72,cool:450}, targetW=1074,targetH=1432;
+const home=$('#home'),session=$('#session'),result=$('#result');
+const video=$('#video'),overlay=$('#overlay'),ctx=overlay.getContext('2d');
+const targetImg=$('#target'),targetMarks=$('#targetMarks'),tm=targetMarks.getContext('2d');
+let stream=null, raf=0, running=false, processing=false, shots=[], lastRed=0, lastPoint=null, work=document.createElement('canvas'),wc=work.getContext('2d',{willReadFrequently:true});
 
-function resize(){if(!video.videoWidth)return;overlay.width=video.videoWidth;overlay.height=video.videoHeight;work.width=480;work.height=Math.round(480*video.videoHeight/video.videoWidth);resizeMarks()}
-function resizeMarks(){const r=target.getBoundingClientRect();marks.width=Math.round(r.width*2);marks.height=Math.round(r.height*2);drawMarks()}
-function drawPoint(p){oc.clearRect(0,0,overlay.width,overlay.height);if(!p)return;const r=Math.max(12,overlay.width/70);oc.beginPath();oc.arc(p.x,p.y,r,0,Math.PI*2);oc.strokeStyle="#fff";oc.lineWidth=3;oc.stroke();oc.beginPath();oc.arc(p.x,p.y,r*.65,0,Math.PI*2);oc.fillStyle="#ef4444";oc.fill()}
+function show(el){[home,session,result].forEach(x=>x.classList.remove('active'));el.classList.add('active')}
+function resize(){const r=video.getBoundingClientRect();overlay.width=Math.max(1,Math.round(r.width*devicePixelRatio));overlay.height=Math.max(1,Math.round(r.height*devicePixelRatio));ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}
+function status(t,ok=false){$('#cameraStatus').textContent=t;$('#cameraStatus').classList.toggle('ok',ok)}
+
+async function getCamera(){
+  if(!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador no permite acceder a la cámara.');
+  const common={audio:false,video:{facingMode:{exact:'environment'},width:{ideal:1280},height:{ideal:1920}}};
+  try{return await navigator.mediaDevices.getUserMedia(common)}
+  catch(e){
+    if(e.name==='OverconstrainedError'||e.name==='NotFoundError') return await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:1920}}});
+    throw e;
+  }
+}
+
 async function start(){
- try{
-  if(!navigator.mediaDevices?.getUserMedia)throw Error("La cámara requiere HTTPS.");
-  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:1920}}});
-  video.srcObject=stream;await new Promise(r=>video.onloadedmetadata=r);await video.play();active=true;resize();
-  $("#startScreen").style.display="none";$("#detectStatus").textContent="BUSCANDO BLANCO…";$("#sessionState").textContent="Buscando blanco";$("#pause").disabled=false;$("#finish").disabled=false;
-  requestAnimationFrame(loop);
- }catch(e){$("#startScreen h2").textContent="No se pudo abrir la cámara";$("#startScreen p").textContent=e.message}
+  $('#homeError').classList.add('hidden');
+  show(session); status('SOLICITANDO CÁMARA…');
+  try{
+    stream=await getCamera(); video.srcObject=stream;
+    await new Promise((resolve,reject)=>{video.onloadedmetadata=resolve;setTimeout(()=>reject(new Error('Tiempo de espera de la cámara agotado.')),8000)});
+    await video.play(); resize(); window.addEventListener('resize',resize);
+    running=true; processing=false; shots=[]; lastRed=0; lastPoint=null; updateStats(); drawTarget();
+    status('CÁMARA ACTIVA',true); requestAnimationFrame(loop);
+  }catch(e){
+    stopCamera(); show(home); const msg=e.name==='NotAllowedError'?'Permiso de cámara denegado. En iPhone: Ajustes > Safari > Cámara > Permitir.':(e.message||'No se pudo iniciar la cámara.'); $('#homeError').textContent=msg; $('#homeError').classList.remove('hidden');
+  }
 }
+function stopCamera(){running=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}video.srcObject=null;cancelAnimationFrame(raf)}
+function finish(){stopCamera();$('#resultShots').textContent=shots.length;$('#totalResult').textContent=shots.reduce((a,s)=>a+s.score,0);$('#resultAverage').textContent=shots.length?(shots.reduce((a,s)=>a+s.score,0)/shots.length).toFixed(1):'0.0';$('#resultBest').textContent=shots.length?Math.max(...shots.map(s=>s.score)):0;show(result)}
 
-/* Reconocimiento automático simplificado del blanco.
-   Usa la silueta/zonas oscuras de la plantilla y busca una región vertical
-   con suficiente contraste. */
-function detectTarget(){
- const W=work.width,H=work.height;
- wc.drawImage(video,0,0,W,H);const d=wc.getImageData(0,0,W,H).data;
- let minX=W,maxX=0,minY=H,maxY=0,dark=0;
- for(let y=Math.floor(H*.04);y<H*.96;y+=4)for(let x=Math.floor(W*.05);x<W*.95;x+=4){
-  const i=(y*W+x)*4, lum=.299*d[i]+.587*d[i+1]+.114*d[i+2];
-  if(lum<70){dark++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
- }
- const area=(maxX-minX)*(maxY-minY);
- if(dark<100||area<W*H*.12)return null;
- return {x:minX,y:minY,w:maxX-minX,h:maxY-minY};
-}
+function loop(){if(!running)return; detectLaser(); raf=requestAnimationFrame(loop)}
 function detectLaser(){
- const W=work.width,H=work.height;wc.drawImage(video,0,0,W,H);const d=wc.getImageData(0,0,W,H).data;
- let sx=0,sy=0,n=0,s=cfg.sens/100;
- for(let y=0;y<H;y+=2)for(let x=0;x<W;x+=2){
-  const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx?((mx-mn)/mx):0;
-  if(r>160+s*30&&sat>.52&&r-Math.max(g,b)>82+s*18){sx+=x;sy+=y;n++}
- }
- if(n<4||n>180)return null;
- return{x:sx/n*(video.videoWidth/W),y:sy/n*(video.videoHeight/H)}
+  if(video.readyState<2||processing)return; processing=true;
+  const w=320,h=Math.max(240,Math.round(320*video.videoHeight/video.videoWidth)); work.width=w;work.height=h;wc.drawImage(video,0,0,w,h);
+  const d=wc.getImageData(0,0,w,h).data; let sx=0,sy=0,n=0,max=0;
+  for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const i=(y*w+x)*4,r=d[i],g=d[i+1],b=d[i+2];const v=r-(g*.75+b*.75);if(r>155&&r>g*1.45&&r>b*1.45&&v>35){sx+=x;sy+=y;n++;if(r>max)max=r}}
+  const now=performance.now();
+  if(n>=2&&n<=500){const x=(sx/n)/w,y=(sy/n)/h;if(max>205&&(now-lastRed>240)&&(!lastPoint||Math.hypot(x-lastPoint.x,y-lastPoint.y)>.018)){registerShot(x,y);lastRed=now;lastPoint={x,y}}}
+  processing=false;
 }
+function registerShot(u,v){
+  const score=scoreAt(u,v);shots.push({u,v,score});updateStats();drawImpact(u,v,shots.length,score)}
 function scoreAt(u,v){
- const x=u*targetW,y=v*targetH;
- const head=((x-548)/110)**2+((y-190)/150)**2;if(head<1)return 5;
- const center=((x-570)/175)**2+((y-895)/390)**2;if(center<1)return 5;
- if(x>=355&&x<=510&&y>=300&&y<=760)return 4;
- if(x>=590&&x<=770&&y>=300&&y<=790)return 4;
- if(x>=285&&x<=520&&y>=780&&y<=1410)return 4;
- if(x>=610&&x<=840&&y>=780&&y<=1410)return 4;
- if(x<360&&y>360&&y<1050)return 3;
- if(x>760&&y>350&&y<1260)return 2;
- return 0;
+  // Approximate mapping for the supplied target. It is intentionally conservative until automatic target calibration is improved.
+  const x=u*1060,y=v*1484;
+  const cx=530,cy=730; const dx=(x-cx)/470,dy=(y-cy)/650; const r=Math.sqrt(dx*dx+dy*dy);
+  if(r<.13)return 5;if(r<.28)return 4;if(r<.48)return 3;if(r<.70)return 2;if(r<.88)return 1;return 0;
 }
-/* La posición del impacto se normaliza usando el área detectada del blanco.
-   No pide tocar esquinas: se ajusta automáticamente al contorno encontrado. */
-function mapImpact(p,t){
- const u=(p.x/video.videoWidth-t.x/work.width)/(t.w/work.width);
- const v=(p.y/video.videoHeight-t.y/work.height)/(t.h/work.height);
- return {u:Math.max(0,Math.min(1,u)),v:Math.max(0,Math.min(1,v))};
-}
-function addShot(p,t){
- const now=performance.now();if(now-lastShot<cfg.cool)return;lastShot=now;
- const q=mapImpact(p,t),score=scoreAt(q.u,q.v);
- shots.push({n:shots.length+1,ts:now,t:new Date().toLocaleTimeString(),u:q.u,v:q.v,score});
- render();drawMarks();
-}
-function drawMarks(){
- mc.clearRect(0,0,marks.width,marks.height);
- const sx=marks.width/targetW,sy=marks.height/targetH;
- shots.forEach(s=>{const x=s.u*targetW*sx,y=s.v*targetH*sy,r=Math.max(9,marks.width/60);
-  mc.beginPath();mc.arc(x,y,r,0,Math.PI*2);mc.fillStyle="#e11d48";mc.fill();mc.strokeStyle="#fff";mc.lineWidth=3;mc.stroke();
-  mc.fillStyle="#fff";mc.font=`bold ${Math.max(13,marks.width/42)}px sans-serif`;mc.textAlign="center";mc.textBaseline="middle";mc.fillText(String(s.n),x,y)
- });
-}
-function render(){
- const total=shots.reduce((a,s)=>a+s.score,0),avg=shots.length?total/shots.length:0,best=shots.length?Math.max(...shots.map(s=>s.score)):0;
- $("#shots").textContent=shots.length;$("#score").textContent=total;$("#avg").textContent=avg.toFixed(1).replace(".",",");$("#last").textContent=shots.length?shots.at(-1).score:"—";
-}
-function finish(){
- running=false;paused=false;$("#pause").disabled=true;$("#finish").disabled=true;$("#newSession").disabled=false;
- $("#rShots").textContent=shots.length;$("#rScore").textContent=shots.reduce((a,s)=>a+s.score,0);$("#rAvg").textContent=(shots.length?shots.reduce((a,s)=>a+s.score,0)/shots.length:0).toFixed(1).replace(".",",");$("#rBest").textContent=shots.length?Math.max(...shots.map(s=>s.score)):0;$("#results").classList.remove("hidden");$("#sessionState").textContent="Sesión finalizada";
-}
-function loop(){
- if(!active)return;
- const t=detectTarget();
- if(t){$("#detectStatus").textContent="✓ BLANCO DETECTADO";$("#detectStatus").classList.add("ok");if(running&&!paused){const p=detectLaser();if(p){$("#detectStatus").textContent="🔴 IMPACTO DETECTADO";$("#detectStatus").classList.add("laser");if(!prev||Math.hypot(p.x-prev.x,p.y-prev.y)<Math.max(80,video.videoWidth*.08)){addShot(p,t)}prev=p;drawPoint(p)}}}
- else{$("#detectStatus").textContent="BUSCANDO BLANCO…";$("#detectStatus").classList.remove("ok","laser")}
- raf=requestAnimationFrame(loop);
-}
-$("#start").onclick=()=>{shots=[];render();start().then(()=>{running=true;$("#sessionState").textContent="Sesión activa"})};
-$("#pause").onclick=()=>{paused=!paused;$("#pause").textContent=paused?"▶ CONTINUAR":"⏸ PAUSAR";$("#sessionState").textContent=paused?"Sesión pausada":"Sesión activa"};
-$("#finish").onclick=finish;$("#newSession").onclick=()=>{shots=[];render();$("#results").classList.add("hidden");running=true;paused=false;$("#pause").textContent="⏸ PAUSAR";$("#pause").disabled=false;$("#finish").disabled=false;$("#sessionState").textContent="Sesión activa"};
-$("#settings").onclick=()=>$("#settingsPanel").classList.remove("hidden");$("#closeSettings").onclick=()=>$("#settingsPanel").classList.add("hidden");
-$("#sens").oninput=e=>{cfg.sens=+e.target.value;$("#sensText").textContent=cfg.sens+"%"};$("#cool").oninput=e=>{cfg.cool=+e.target.value;$("#coolText").textContent=cfg.cool+" ms"};
-video.addEventListener("loadedmetadata",resize);target.addEventListener("load",resizeMarks);window.addEventListener("resize",resizeMarks);
+function updateStats(){const p=shots.reduce((a,s)=>a+s.score,0);$('#shots').textContent=shots.length;$('#points').textContent=p;$('#average').textContent=shots.length?(p/shots.length).toFixed(1):'0.0';$('#shotCount').textContent=`${shots.length} ${shots.length===1?'DISPARO':'DISPAROS'}`;$('#liveScore').textContent=`${p} PTS`;$('#last').textContent=shots.length?`ÚLTIMO: ${shots.at(-1).score}`:'—'}
+function drawTarget(){const r=targetMarks.getBoundingClientRect();targetMarks.width=Math.max(1,Math.round(r.width*devicePixelRatio));targetMarks.height=Math.max(1,Math.round(r.height*devicePixelRatio));tm.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);tm.clearRect(0,0,r.width,r.height);shots.forEach((s,i)=>drawMark(s.u,s.v,i+1,s.score,false))}
+function drawMark(u,v,num,score,clear=true){const r=targetMarks.getBoundingClientRect();if(clear)drawTarget();const x=u*r.width,y=v*r.height;tm.save();tm.strokeStyle='#e11';tm.fillStyle='#e11';tm.lineWidth=2.5;tm.beginPath();tm.arc(x,y,10,0,Math.PI*2);tm.stroke();tm.beginPath();tm.arc(x,y,3,0,Math.PI*2);tm.fill();tm.font='bold 11px Arial';tm.fillText(`${num} · ${score}`,x+13,y-8);tm.restore()}
+window.addEventListener('resize',()=>{if(session.classList.contains('active'))drawTarget()});
+$('#start').onclick=start;$('#finish').onclick=finish;$('#again').onclick=()=>{show(home)};
+targetImg.onload=drawTarget;

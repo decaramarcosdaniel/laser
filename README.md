@@ -1,15 +1,17 @@
-# LASER TRAINING V9
+# Laser Training V10
 
-Interfaz simplificada:
-- Un único botón INICIAR.
-- Reconocimiento automático del blanco, sin tocar cuatro esquinas.
-- Cámara trasera del iPhone.
-- Detección del punto láser rojo.
-- Mapa visual de impactos.
-- Puntuación inicial 0–5.
-- Pausar y finalizar durante la sesión.
-- Configuración escondida en ⚙️.
+Versión simplificada para iPhone/Safari y GitHub Pages.
 
-Publicar todos los archivos y la carpeta assets en /laser/.
+## Cambios principales
+- Pantalla inicial limpia: solo **INICIAR**.
+- No hay ventana de configuración al comenzar.
+- Al tocar INICIAR se solicita directamente la cámara trasera.
+- Sin calibración manual de cuatro esquinas.
+- Detección básica del destello rojo del láser.
+- Registro de cada impacto en el blanco, numerado y con puntaje aproximado.
+- Botón FINALIZAR durante la sesión.
 
-Nota: el reconocimiento automático del blanco de esta versión es un detector visual inicial basado en contraste. Para una versión de alta precisión se debe sustituir por un detector específico del patrón del blanco y validar con fotografías reales del blanco a distintas distancias e inclinaciones.
+## Publicación
+Subir todos los archivos manteniendo la carpeta `assets`. GitHub Pages debe servirse por HTTPS para que Safari permita la cámara.
+
+> La detección y puntuación automática todavía son una primera aproximación. La siguiente etapa es mejorar el reconocimiento automático del blanco y ajustar exactamente las zonas 0–5 del blanco utilizado.

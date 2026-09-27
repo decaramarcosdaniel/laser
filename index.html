@@ -1,75 +1,53 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#080b10">
-<title>Laser Training V9</title>
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#111"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
+<title>Laser Training</title>
 </head>
 <body>
 <div id="app">
-<header>
-  <div><small>LASER TRAINING</small><h1>Entrenamiento</h1></div>
-  <button id="settings" aria-label="Configuración">⚙️</button>
-</header>
+  <section id="home" class="screen active">
+    <div class="brand"><div class="brand-mark">●</div><h1>LASER TRAINING</h1><p>Entrenamiento con láser</p></div>
+    <button id="start" class="primary">INICIAR</button>
+    <p class="hint">La cámara se abrirá al iniciar.</p>
+    <p id="homeError" class="error hidden"></p>
+  </section>
 
-<main>
-<section id="camera" class="camera">
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="overlay"></canvas>
-  <div id="startScreen">
-    <div class="logo">🎯</div>
-    <h2>Laser Training</h2>
-    <p>Colocá el blanco frente a la cámara. El sistema intentará reconocerlo automáticamente.</p>
-    <button id="start" class="start-btn">INICIAR</button>
-  </div>
-  <div id="detectStatus" class="detect-status">BLANCO NO DETECTADO</div>
-</section>
+  <section id="session" class="screen">
+    <div class="camera-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div id="cameraStatus" class="camera-status">INICIANDO CÁMARA…</div>
+      <div class="topbar">
+        <span id="shotCount">0 DISPAROS</span>
+        <span id="liveScore">0 PTS</span>
+      </div>
+      <button id="finish" class="finish">FINALIZAR</button>
+    </div>
 
-<section class="scorebar">
-  <div><strong id="shots">0</strong><span>DISPAROS</span></div>
-  <div><strong id="score">0</strong><span>PUNTOS</span></div>
-  <div><strong id="avg">0,0</strong><span>PROMEDIO</span></div>
-</section>
+    <div class="dashboard">
+      <div class="stat"><small>DISPAROS</small><b id="shots">0</b></div>
+      <div class="stat"><small>PUNTOS</small><b id="points">0</b></div>
+      <div class="stat"><small>PROMEDIO</small><b id="average">0.0</b></div>
+    </div>
 
-<section class="target-card">
-  <div class="target-head"><b>IMPACTOS</b><span id="sessionState">Esperando sesión</span></div>
-  <div class="target-wrap">
-    <img id="target" src="assets/blanco.jpg" alt="Blanco">
-    <canvas id="marks"></canvas>
-  </div>
-</section>
+    <div class="target-card">
+      <div class="target-head"><b>IMPACTOS</b><span id="last">—</span></div>
+      <div class="target-view"><img id="target" src="assets/blanco.jpg" alt="Blanco de tiro"><canvas id="targetMarks"></canvas></div>
+    </div>
+  </section>
 
-<section class="actions">
-  <button id="pause" disabled>⏸ PAUSAR</button>
-  <button id="finish" disabled>■ FINALIZAR</button>
-</section>
-
-<section id="results" class="results hidden">
-  <h2>Resultado</h2>
-  <div class="result-grid">
-    <div><b id="rShots">0</b><span>DISPAROS</span></div>
-    <div><b id="rScore">0</b><span>PUNTOS</span></div>
-    <div><b id="rAvg">0,0</b><span>PROMEDIO</span></div>
-    <div><b id="rBest">0</b><span>MEJOR</span></div>
-  </div>
-  <button id="newSession">NUEVA SESIÓN</button>
-</section>
-
-<div id="settingsPanel" class="settings hidden">
-  <div class="settings-box">
-    <div class="settings-head"><h2>Configuración</h2><button id="closeSettings">✕</button></div>
-    <label>Sensibilidad <b id="sensText">72%</b></label>
-    <input id="sens" type="range" min="45" max="92" value="72">
-    <label>Bloqueo entre disparos <b id="coolText">450 ms</b></label>
-    <input id="cool" type="range" min="150" max="1200" step="50" value="450">
-  </div>
+  <section id="result" class="screen">
+    <div class="result-box"><span>RESULTADO</span><strong id="totalResult">0</strong><small>PUNTOS</small></div>
+    <div class="result-grid">
+      <div><small>DISPAROS</small><b id="resultShots">0</b></div>
+      <div><small>PROMEDIO</small><b id="resultAverage">0.0</b></div>
+      <div><small>MEJOR</small><b id="resultBest">0</b></div>
+    </div>
+    <button id="again" class="primary">NUEVA SESIÓN</button>
+  </section>
 </div>
-<canvas id="work"></canvas>
-</main>
 <script src="app.js"></script>
-</div>
-</body>
-</html>
+</body></html>
