@@ -3,51 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#080808">
+<meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.json">
-<title>Laser Training V16</title>
+<title>Laser Training V17</title>
 </head>
 <body>
 <main>
 <section id="home" class="home">
   <h1>LASER <span>TRAINING</span></h1>
-  <p>Entrenamiento de tiro seco</p>
+  <p>Prueba de cámara</p>
   <button id="start" class="primary">INICIAR</button>
 </section>
 
 <section id="session" class="session hidden">
   <div class="camera">
-    <video id="video" autoplay muted playsinline></video>
-    <canvas id="cameraMark"></canvas>
-    <div class="hud"><span>DISPAROS <b id="shotCount">0</b></span><span>PUNTOS <b id="score">0</b></span></div>
-    <div id="state">INICIANDO CÁMARA…</div>
+    <video id="video" autoplay playsinline muted webkit-playsinline></video>
+    <div class="cameraShade"></div>
+    <div class="cameraStatus"><span class="dot"></span><span id="state">ABRIENDO CÁMARA…</span></div>
   </div>
 
   <div class="targetArea">
-    <div class="targetTitle"><span>BLANCO</span><span>ÚLTIMO <b id="last">—</b></span></div>
+    <div class="targetTitle">BLANCO DE PRUEBA</div>
     <div class="targetStage">
       <img id="target" src="assets/blanco.jpg" alt="Blanco">
-      <canvas id="targetMark"></canvas>
       <div id="loadError" class="error hidden">NO SE CARGÓ EL BLANCO</div>
     </div>
   </div>
 
   <div class="buttons">
-    <button id="pause" class="secondary">PAUSAR</button>
     <button id="finish" class="danger">FINALIZAR</button>
   </div>
-</section>
-
-<section id="result" class="result hidden">
-  <h1>RESULTADO</h1>
-  <div class="resultGrid">
-    <div><small>DISPAROS</small><b id="rShots">0</b></div>
-    <div><small>PUNTOS</small><b id="rPoints">0</b></div>
-    <div><small>PROMEDIO</small><b id="rAvg">0.0</b></div>
-    <div><small>MEJOR</small><b id="rBest">0</b></div>
-  </div>
-  <button id="again" class="primary">NUEVA SESIÓN</button>
 </section>
 </main>
 <script src="app.js"></script>

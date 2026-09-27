@@ -1,20 +1,18 @@
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;background:#080808;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
+html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
 .hidden{display:none!important}
-.home,.result{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+.home{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:#080808}
 h1{font-size:28px;letter-spacing:.16em;margin:0}h1 span{font-weight:400}.home p{color:#999;margin:12px 0 42px}
-button{border:0;border-radius:13px;padding:15px 18px;font-weight:800;font-size:13px;letter-spacing:.05em}.primary{background:#fff;color:#111;min-width:210px}.secondary{background:#252525;color:#fff}.danger{background:#a93434;color:#fff}
-.session{width:100%;height:100%;display:flex;flex-direction:column;background:#080808}
-.camera{position:relative;flex:0 0 57%;min-height:0;background:#000;overflow:hidden}
-.camera video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-.cameraMark{position:absolute;inset:0;width:100%;height:100%}
-.hud{position:absolute;z-index:3;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;justify-content:space-between;font-size:12px;font-weight:bold;text-shadow:0 2px 5px #000}.hud b{font-size:18px;margin-left:4px}
-#state{position:absolute;z-index:3;left:50%;bottom:12px;transform:translateX(-50%);background:#000b;border-radius:20px;padding:8px 12px;font-size:11px;white-space:nowrap}
-.targetArea{flex:1;min-height:0;padding:7px 9px;background:#111;display:flex;flex-direction:column}
-.targetTitle{height:22px;flex:0 0 22px;color:#aaa;font-size:10px;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
+button{border:0;border-radius:13px;padding:15px 18px;font-weight:800;font-size:13px;letter-spacing:.05em}.primary{background:#fff;color:#111;min-width:210px}.danger{background:#b83232;color:#fff}
+.session{position:fixed;inset:0;width:100%;height:100%;display:flex;flex-direction:column;background:#000}
+.camera{position:relative;flex:0 0 65%;height:65%;min-height:0;background:#000;overflow:hidden}
+.camera video{position:absolute;display:block;left:0;top:0;width:100%;height:100%;object-fit:cover;background:#000;margin:0;padding:0;border:0}
+.cameraShade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(0,0,0,.18),transparent 25%,transparent 75%,rgba(0,0,0,.18))}
+.cameraStatus{position:absolute;z-index:5;left:12px;right:12px;top:max(12px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,.68);border-radius:22px;padding:9px 13px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}
+.dot{width:9px;height:9px;border-radius:50%;background:#2ee66b;box-shadow:0 0 9px rgba(46,230,107,.8);flex:none}
+.targetArea{flex:1;min-height:0;padding:6px 8px;background:#111;display:flex;flex-direction:column}
+.targetTitle{height:18px;flex:0 0 18px;color:#aaa;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .targetStage{position:relative;flex:1;min-height:0;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .targetStage img{display:block;max-width:100%;max-height:100%;width:auto;height:auto}
-.targetStage canvas{position:absolute;pointer-events:none}
 .error{position:absolute;color:#111;background:#fff;padding:10px;border-radius:8px;font-size:11px;font-weight:bold}
-.buttons{height:58px;flex:0 0 58px;background:#111;padding:7px;display:flex;gap:7px}.buttons button{flex:1;padding:11px 8px}
-.result h1{margin-bottom:10px}.resultGrid{width:100%;max-width:400px;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:30px 0}.resultGrid div{background:#181818;border-radius:15px;padding:20px}.resultGrid small{display:block;color:#888;font-size:9px;margin-bottom:7px}.resultGrid b{font-size:30px}
+.buttons{height:56px;flex:0 0 56px;background:#111;padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:flex}.buttons button{flex:1;padding:10px}

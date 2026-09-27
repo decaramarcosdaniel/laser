@@ -1,1 +1,9 @@
-{"name":"Laser Training V16","short_name":"LaserTraining","start_url":"./","display":"standalone","background_color":"#080808","theme_color":"#080808","lang":"es"}
+{
+  "name": "Laser Training V17",
+  "short_name": "Laser V17",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "lang": "es"
+}

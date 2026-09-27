@@ -1,13 +1,12 @@
-# Laser Training V16
+# LASER TRAINING V17
 
-V16 corrige la estructura visual de la V15:
-- cámara arriba con tamaño fijo y visible;
-- blanco abajo, siempre dentro de su contenedor;
-- controles separados;
-- canvas de impactos dimensionado después de cargar cámara e imagen;
-- estado visible de cámara;
-- detector conservador de pulsos rojos;
-- un disparo requiere aparición repentina y luego desaparición antes del siguiente;
-- sonido al validar el disparo.
+Versión de diagnóstico de cámara para iPhone/Safari.
 
-La detección/mapeo todavía es experimental.
+- INICIAR abre la cámara trasera.
+- La cámara ocupa la parte superior.
+- El blanco aparece debajo.
+- No hay detección de láser todavía.
+- No hay calibración.
+- FINALIZAR detiene la cámara.
+
+Esta versión sirve para comprobar primero que el video de cámara se muestra correctamente antes de volver a incorporar la detección de disparos.
