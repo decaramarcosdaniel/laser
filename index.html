@@ -1,61 +1,22 @@
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#0b0b0b">
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css">
-<title>Laser Training V14</title>
-</head>
-<body>
-<div class="app">
-<section id="home" class="screen home">
-  <div class="brand">LASER <span>TRAINING</span></div>
-  <p>Entrenamiento de tiro seco</p>
-  <button id="startBtn" class="btn primary">INICIAR</button>
-  <small>Cámara trasera · láser rojo · sonido</small>
-</section>
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0b0b"><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
+<title>Laser Training V15</title></head><body><div class="app">
+<section id="home" class="screen home"><div class="brand">LASER <span>TRAINING</span></div>
+<p>Entrenamiento de tiro seco</p><button id="startBtn" class="btn primary">INICIAR</button>
+<small>Detección por pulso · cámara trasera · sonido</small></section>
 
-<section id="session" class="screen session hidden">
-  <div class="camera">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="overlay"></canvas>
-    <div class="stats"><span>DISPAROS <b id="shots">0</b></span><span>PUNTOS <b id="points">0</b></span></div>
-    <div id="status" class="status">PREPARANDO…</div>
-    <div id="flash" class="flash"></div>
-  </div>
+<section id="session" class="screen session hidden"><div class="camera">
+<video id="video" autoplay playsinline muted></video><canvas id="overlay"></canvas>
+<div class="stats"><span>DISPAROS <b id="shots">0</b></span><span>PUNTOS <b id="points">0</b></span></div>
+<div id="status" class="status">BUSCANDO LÁSER…</div><div id="flash" class="flash"></div></div>
+<div class="targetPanel"><div class="targetHead"><span>BLANCO · IMPACTOS</span><span>ÚLTIMO: <b id="last">—</b></span></div>
+<div id="targetBox" class="targetBox"><img id="target" src="assets/blanco.jpg" alt="Blanco"><canvas id="marks"></canvas>
+<div id="targetError" class="targetError hidden">NO SE PUDO CARGAR EL BLANCO</div></div></div>
+<div class="controls"><button id="pause" class="btn secondary">PAUSAR</button><button id="finish" class="btn danger">FINALIZAR</button></div></section>
 
-  <div class="targetPanel">
-    <div class="targetHead">
-      <span>BLANCO · IMPACTOS</span>
-      <span>ÚLTIMO: <b id="last">—</b></span>
-    </div>
-    <div id="targetBox" class="targetBox">
-      <img id="target" src="assets/blanco.jpg" alt="Blanco de entrenamiento"
-           onerror="document.getElementById('targetError').classList.remove('hidden')">
-      <canvas id="marks"></canvas>
-      <div id="targetError" class="targetError hidden">NO SE PUDO CARGAR EL BLANCO</div>
-    </div>
-  </div>
-
-  <div class="controls">
-    <button id="pause" class="btn secondary">PAUSAR</button>
-    <button id="finish" class="btn danger">FINALIZAR</button>
-  </div>
-</section>
-
-<section id="result" class="screen result hidden">
-  <div class="brand">RESULTADO</div>
-  <div class="card">
-    <div><small>DISPAROS</small><b id="rs">0</b></div>
-    <div><small>PUNTOS</small><b id="rp">0</b></div>
-    <div><small>PROMEDIO</small><b id="ra">0.0</b></div>
-    <div><small>MEJOR</small><b id="rb">0</b></div>
-  </div>
-  <button id="again" class="btn primary">NUEVA SESIÓN</button>
-</section>
-</div>
-<script src="app.js"></script>
-</body>
-</html>
+<section id="result" class="screen result hidden"><div class="brand">RESULTADO</div>
+<div class="card"><div><small>DISPAROS</small><b id="rs">0</b></div><div><small>PUNTOS</small><b id="rp">0</b></div>
+<div><small>PROMEDIO</small><b id="ra">0.0</b></div><div><small>MEJOR</small><b id="rb">0</b></div></div>
+<button id="again" class="btn primary">NUEVA SESIÓN</button></section>
+</div><script src="app.js"></script></body></html>

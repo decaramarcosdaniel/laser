@@ -1,10 +1,14 @@
-# Laser Training V14
+# Laser Training V15
 
-Corrección principal respecto de V13:
-- el blanco se muestra en un contenedor blanco propio;
-- se aumenta el espacio destinado al blanco;
-- el canvas de impactos se dimensiona según el tamaño real de la imagen;
-- se incluye mensaje de error si el archivo del blanco no carga;
-- se mantiene el sonido y la lógica de un disparo por evento.
+Corrección principal: la detección deja de contar simplemente un punto rojo presente.
+Ahora busca un PULSO NUEVO y repentino:
+- rojo muy saturado;
+- área pequeña;
+- aumento de intensidad respecto del fotograma anterior;
+- confirmación en varios fotogramas;
+- el sistema debe volver a quedar sin pulso antes de armar el siguiente disparo;
+- intervalo mínimo entre disparos.
 
-El mapeo cámara -> blanco todavía es una primera aproximación y será refinado en la siguiente etapa.
+Esto evita que una zona roja fija, reflejo o iluminación roja se convierta automáticamente en disparos.
+
+El sonido solo se reproduce después de un disparo validado.
