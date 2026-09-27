@@ -1,1 +1,76 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>Laser Training V3</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css"></head><body><header><div><small>LASER TRAINING</small><h1>Detector láser</h1></div><div id="status">● Cámara apagada</div></header><main><section class="card stats"><div><b id="shots">0</b><span>Disparos</span></div><div><b id="score">0</b><span>Puntos</span></div><div><b id="avg">0.0</b><span>Promedio</span></div></section><section class="camera"><video id="video" autoplay muted playsinline></video><canvas id="overlay"></canvas><div id="message">Presioná “Activar cámara”.</div></section><section class="buttons"><button id="cameraBtn">📷 Activar cámara</button><button id="calBtn" disabled>🎯 Calibrar</button><button id="sessionBtn" disabled>▶ Iniciar sesión</button><button id="stopBtn" disabled>■ Detener</button></section><section class="card"><h2>Prueba del detector</h2><p>Apuntá el láser rojo al blanco. Cuando el sistema detecte el punto, aparecerá un círculo rojo y se registrará el impacto.</p><div id="debug">Esperando cámara…</div></section><section class="card"><div class="row"><h2>Impactos</h2><button id="clearBtn">Limpiar</button></div><div id="list">Sin impactos.</div></section><section id="error" class="error hidden"></section></main><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Laser Training V4</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div><small>LASER TRAINING V4</small><h1>Detector láser</h1></div>
+  <div id="status" class="status off">● Cámara apagada</div>
+</header>
+
+<main>
+<section class="stats">
+  <div><b id="shots">0</b><span>Disparos</span></div>
+  <div><b id="score">0</b><span>Puntos</span></div>
+  <div><b id="avg">0.0</b><span>Promedio</span></div>
+  <div><b id="fps">0</b><span>FPS análisis</span></div>
+</section>
+
+<section class="camera">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
+  <div id="message" class="message">Presioná “Activar cámara”.</div>
+  <div id="laserBadge" class="laser-badge">● LÁSER NO DETECTADO</div>
+</section>
+
+<section class="buttons">
+  <button id="cameraBtn" class="primary">📷 Activar cámara</button>
+  <button id="calibrateBtn" disabled>🎯 Calibrar</button>
+  <button id="sessionBtn" disabled>▶ Iniciar sesión</button>
+  <button id="stopBtn" disabled>■ Detener</button>
+</section>
+
+<section class="panel">
+  <div class="head"><h2>Prueba del detector</h2><span id="thresholdText">Sensibilidad 72%</span></div>
+  <p>Primero probamos únicamente la detección. Apuntá el punto rojo al blanco. Cuando se detecte, aparecerá un marcador rojo y se incrementará el contador.</p>
+  <label class="range">Sensibilidad
+    <input id="sensitivity" type="range" min="45" max="92" value="72">
+  </label>
+  <label class="range">Área mínima
+    <input id="minArea" type="range" min="1" max="80" value="5">
+  </label>
+  <label class="range">Bloqueo entre detecciones
+    <input id="cooldown" type="range" min="150" max="1200" step="50" value="500">
+  </label>
+</section>
+
+<section class="panel">
+  <div class="head"><h2>Impactos</h2><button id="clearBtn" class="danger">Limpiar</button></div>
+  <div id="list" class="list"><p class="muted">Sin impactos.</p></div>
+</section>
+
+<section class="panel help">
+<h2>Si no detecta el láser</h2>
+<ol>
+<li>Usá la cámara trasera del iPhone.</li>
+<li>Probá primero a 2–5 metros del blanco.</li>
+<li>Reducí la iluminación directa sobre el blanco.</li>
+<li>Mové el punto láser lentamente sobre una zona blanca.</li>
+<li>Ajustá “Sensibilidad” entre 60% y 85%.</li>
+</ol>
+<p><b>Importante:</b> esta versión analiza la imagen de cámara en un canvas separado y no analiza la propia capa de gráficos.</p>
+</section>
+
+<canvas id="processor" hidden></canvas>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

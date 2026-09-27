@@ -1,18 +1,34 @@
-# Laser Training V3
+# LASER TRAINING V4
 
-Versión corregida para iPhone.
+Versión de prueba para iPhone/Safari/GitHub Pages.
 
-## Requisito fundamental
-La cámara del iPhone requiere un contexto seguro: HTTPS. No abras `index.html` directamente desde Archivos.
+## Qué cambia
+- El `<video>` muestra exclusivamente la cámara.
+- Un canvas oculto procesa la imagen de cámara.
+- Otro canvas independiente dibuja los marcadores.
+- Se solicita la cámara trasera mediante `facingMode: environment`.
+- El detector busca rojo muy dominante, saturado y brillante.
+- Rechaza detecciones que ocupan una superficie excesivamente grande.
+- Tiene sensibilidad, área mínima y anti-repetición configurables.
+- Incluye un modo de prueba antes de implementar la puntuación.
 
-### Forma sencilla
-Subí esta carpeta a GitHub Pages, Netlify o Vercel y abrí la dirección HTTPS en Safari. Luego autorizá la cámara.
+## Publicar en GitHub Pages
+Reemplazar los archivos del repositorio `/laser/` por:
+- index.html
+- app.js
+- styles.css
+- manifest.json
 
-## Flujo
-1. Activar cámara.
-2. Encuadrar blanco.
-3. Calibrar.
-4. Iniciar sesión.
-5. Apuntar el láser rojo.
+La URL debe seguir siendo HTTPS.
 
-La puntuación 0–5 de esta versión es aproximada. La próxima versión debe incorporar una plantilla geométrica exacta del blanco suministrado y calibración por esquinas.
+## Prueba
+1. Abrir Safari en https://decaramarcosdaniel.github.io/laser/
+2. Pulsar Activar cámara.
+3. Aceptar permiso.
+4. Pulsar Calibrar.
+5. Pulsar Iniciar sesión.
+6. Apuntar el láser rojo a una zona blanca.
+7. El indicador superior debe cambiar a "LÁSER DETECTADO".
+
+## Nota
+La detección depende de la potencia/longitud de onda del láser, exposición automática, distancia e iluminación. Esta versión todavía no asigna puntuación al blanco; primero valida el detector físico.

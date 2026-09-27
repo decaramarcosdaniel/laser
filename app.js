@@ -1,14 +1,141 @@
-const $=s=>document.querySelector(s);const video=$("#video"),overlay=$("#overlay"),ctx=overlay.getContext("2d"),work=document.createElement("canvas"),wctx=work.getContext("2d",{willReadFrequently:true});let stream=null,active=false,calibrated=false,last=0,session=0,shots=[],cooldown=500;const cfg={red:150,ratio:1.55,min:2};
-function setErr(t){$("#error").textContent=t;$("#error").classList.remove("hidden")}
-function resize(){if(!video.videoWidth)return;overlay.width=video.videoWidth;overlay.height=video.videoHeight;work.width=Math.min(640,video.videoWidth);work.height=Math.round(work.width*video.videoHeight/video.videoWidth);draw()}
-function draw(){ctx.clearRect(0,0,overlay.width,overlay.height);if(!overlay.width)return;ctx.strokeStyle=calibrated?'#22c55e':'#f59e0b';ctx.lineWidth=Math.max(3,overlay.width/300);ctx.strokeRect(overlay.width*.05,overlay.height*.05,overlay.width*.9,overlay.height*.9)}
-async function camera(){try{if(!navigator.mediaDevices?.getUserMedia)throw new Error('Este navegador/origen no permite cámara. Usá Safari con HTTPS.');stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});video.srcObject=stream;await video.play();resize();$("#cameraBtn").disabled=true;$("#calBtn").disabled=false;$("#message").textContent='Cámara activa. Encadrá el blanco completo.';$("#status").textContent='● Cámara activa';loop()}catch(e){setErr('Cámara: '+e.message+' — Si abriste el HTML desde un archivo, no funcionará en iPhone. Debe publicarse en HTTPS.')}}
-function calibrate(){calibrated=true;draw();$("#sessionBtn").disabled=false;$("#message").textContent='Blanco calibrado. Iniciá la sesión.'}
-function start(){if(!calibrated)return;active=true;session=Date.now();last=0;$("#sessionBtn").disabled=true;$("#stopBtn").disabled=false;$("#message").textContent='Sesión activa. Probá el láser rojo.'}
-function stop(){active=false;$("#sessionBtn").disabled=false;$("#stopBtn").disabled=true;$("#message").textContent='Sesión detenida.'}
-function detect(){if(!video.videoWidth)return;wctx.drawImage(video,0,0,work.width,work.height);const d=wctx.getImageData(0,0,work.width,work.height).data;let sx=0,sy=0,n=0,maxR=0;for(let y=2;y<work.height-2;y+=2){for(let x=2;x<work.width-2;x+=2){const i=(y*work.width+x)*4,r=d[i],g=d[i+1],b=d[i+2];if(r>maxR)maxR=r;if(r>cfg.red&&r>g*cfg.ratio&&r>b*cfg.ratio){sx+=x;sy+=y;n++}}}$("#debug").textContent=`rojo detectado: ${n}px · R máx: ${maxR}`;if(n<cfg.min)return null;return{x:sx/n*overlay.width/work.width,y:sy/n*overlay.height/work.height,n}}
-function score(x,y){const cx=overlay.width*.535,cy=overlay.height*.56,rx=overlay.width*.19,ry=overlay.height*.31;const d=Math.hypot((x-cx)/rx,(y-cy)/ry);return d<=.22?5:d<=.55?4:d<=.82?3:d<=1?2:0}
-function hit(p){const now=Date.now();if(now-last<cooldown)return;last=now;const s=score(p.x,p.y);shots.push({n:shots.length+1,s,time:new Date(now).toLocaleTimeString(),x:Math.round(p.x),y:Math.round(p.y)});ctx.beginPath();ctx.arc(p.x,p.y,11,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#fff';ctx.font='bold 15px sans-serif';ctx.fillText(String(s),p.x+15,p.y+5);render()}
-function render(){const total=shots.reduce((a,b)=>a+b.s,0);$("#shots").textContent=shots.length;$("#score").textContent=total;$("#avg").textContent=(shots.length?total/shots.length:0).toFixed(1);$("#list").innerHTML=shots.length?shots.slice().reverse().map(x=>`<div class="hit"><div class="badge">${x.s}</div><div><b>Disparo #${x.n}</b><br><small>${x.time} · X ${x.x} · Y ${x.y}</small></div><b>${x.s} pts</b></div>`).join(''):'Sin impactos.'}
-function loop(){if(video.readyState>=2){draw();if(active){const p=detect();if(p)hit(p)}}requestAnimationFrame(loop)}
-$("#cameraBtn").onclick=camera;$("#calBtn").onclick=calibrate;$("#sessionBtn").onclick=start;$("#stopBtn").onclick=stop;$("#clearBtn").onclick=()=>{shots=[];render();draw()};video.onloadedmetadata=resize;window.onresize=resize;
+const $=s=>document.querySelector(s);
+const video=$("#video"), overlay=$("#overlay"), octx=overlay.getContext("2d");
+const processor=$("#processor"), pctx=processor.getContext("2d",{willReadFrequently:true});
+let stream=null, raf=0, active=false, session=false, calibrated=false;
+let lastDetection=0, shots=[], frames=0, fpsFrames=0, fpsAt=performance.now();
+let cfg={sensitivity:72,minArea:5,cooldown:500};
+
+function setStatus(text, cls="off"){const e=$("#status");e.textContent="● "+text;e.className="status "+cls}
+function resize(){
+  if(!video.videoWidth)return;
+  overlay.width=video.videoWidth;overlay.height=video.videoHeight;
+  drawOverlay();
+}
+function drawOverlay(point=null){
+  if(!overlay.width)return;
+  octx.clearRect(0,0,overlay.width,overlay.height);
+  const w=overlay.width,h=overlay.height;
+  if(calibrated){
+    octx.strokeStyle="#22c55e";octx.lineWidth=Math.max(3,w/320);
+    octx.strokeRect(w*.04,h*.04,w*.92,h*.92);
+  }
+  if(point){
+    octx.beginPath();octx.arc(point.x,point.y,Math.max(13,w/70),0,Math.PI*2);
+    octx.strokeStyle="#fff";octx.lineWidth=3;octx.stroke();
+    octx.beginPath();octx.arc(point.x,point.y,Math.max(9,w/90),0,Math.PI*2);
+    octx.fillStyle="#ef4444";octx.fill();
+  }
+}
+async function startCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){
+    setStatus("Cámara no disponible","err");
+    $("#message").textContent="Safari no habilitó la cámara. Verificá que la página esté en HTTPS.";
+    return;
+  }
+  try{
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:60}}
+    });
+    video.srcObject=stream;
+    await video.play();
+    processor.width=480;
+    processor.height=Math.round(480*(video.videoHeight/video.videoWidth));
+    resize();
+    active=true;
+    setStatus("Cámara activa","on");
+    $("#cameraBtn").textContent="🔄 Reiniciar cámara";
+    $("#calibrateBtn").disabled=false;
+    $("#message").textContent="Cámara activa. Encuadrá el blanco completo.";
+    cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+  }catch(err){
+    console.error(err);
+    setStatus("Error de cámara","err");
+    $("#message").textContent="Permiso de cámara denegado o cámara ocupada. En Safari: Ajustes → Safari → Cámara → Permitir.";
+  }
+}
+function calibrate(){
+  if(!active)return;
+  calibrated=true;
+  drawOverlay();
+  $("#sessionBtn").disabled=false;
+  $("#message").textContent="Blanco calibrado. Ahora iniciá la sesión.";
+}
+function startSession(){
+  if(!calibrated)return;
+  session=true; shots=[]; lastDetection=0; render();
+  $("#sessionBtn").disabled=true;$("#stopBtn").disabled=false;
+  $("#message").textContent="SESIÓN ACTIVA — probá el láser rojo.";
+}
+function stopSession(){session=false;$("#sessionBtn").disabled=false;$("#stopBtn").disabled=true;$("#message").textContent="Sesión detenida."}
+function scorePlaceholder(){return 0}
+function record(point){
+  const now=performance.now();
+  if(now-lastDetection<cfg.cooldown)return;
+  lastDetection=now;
+  const n=shots.length+1;
+  shots.push({n,time:new Date().toLocaleTimeString(),x:point.x,y:point.y,score:scorePlaceholder()});
+  render();
+  drawOverlay(point);
+}
+function render(){
+  const total=shots.reduce((a,s)=>a+s.score,0),avg=shots.length?total/shots.length:0;
+  $("#shots").textContent=shots.length;$("#score").textContent=total;$("#avg").textContent=avg.toFixed(1);
+  $("#list").innerHTML=shots.length?shots.slice().reverse().map(s=>`<div class="item"><div class="badge">🔴</div><div><b>Detección #${s.n}</b><br><small>${s.time} · X ${Math.round(s.x)} · Y ${Math.round(s.y)}</small></div><strong>LÁSER</strong></div>`).join(""):'<p class="muted">Sin impactos.</p>';
+}
+function detect(){
+  if(video.readyState<2)return null;
+  const W=processor.width,H=processor.height;
+  pctx.drawImage(video,0,0,W,H);
+  const data=pctx.getImageData(0,0,W,H).data;
+  let sx=0,sy=0,count=0;
+  const sens=cfg.sensitivity/100;
+  // Requiere rojo dominante + luminosidad alta + saturación.
+  // Se muestrea cada 2 px para mantener rendimiento en iPhone.
+  for(let y=0;y<H;y+=2){
+    for(let x=0;x<W;x+=2){
+      const i=(y*W+x)*4,r=data[i],g=data[i+1],b=data[i+2];
+      const max=Math.max(r,g,b), min=Math.min(r,g,b);
+      const sat=max?((max-min)/max):0;
+      const redDominance=r-Math.max(g,b);
+      const bright=r/255;
+      if(bright>0.62+sens*.18 && sat>0.48 && redDominance>75+sens*20){
+        sx+=x;sy+=y;count++;
+      }
+    }
+  }
+  if(count<cfg.minArea)return null;
+  // Rechazo de detecciones enormes: un ambiente rojo completo no es un punto láser.
+  const maxReasonable=W*H*0.018;
+  if(count>maxReasonable)return null;
+  return {x:sx/count*(video.videoWidth/W),y:sy/count*(video.videoHeight/H),area:count};
+}
+function loop(){
+  if(!active)return;
+  frames++;fpsFrames++;
+  const now=performance.now();
+  if(now-fpsAt>1000){$("#fps").textContent=fpsFrames;fpsFrames=0;fpsAt=now}
+  const point=detect();
+  if(point){
+    $("#laserBadge").textContent="● LÁSER DETECTADO";
+    $("#laserBadge").classList.add("detected");
+    drawOverlay(point);
+    if(session)record(point);
+  }else{
+    $("#laserBadge").textContent="● LÁSER NO DETECTADO";
+    $("#laserBadge").classList.remove("detected");
+    drawOverlay();
+  }
+  raf=requestAnimationFrame(loop);
+}
+$("#cameraBtn").onclick=startCamera;
+$("#calibrateBtn").onclick=calibrate;
+$("#sessionBtn").onclick=startSession;
+$("#stopBtn").onclick=stopSession;
+$("#clearBtn").onclick=()=>{shots=[];render();drawOverlay()};
+$("#sensitivity").oninput=e=>{cfg.sensitivity=+e.target.value;$("#thresholdText").textContent="Sensibilidad "+e.target.value+"%"};
+$("#minArea").oninput=e=>cfg.minArea=+e.target.value;
+$("#cooldown").oninput=e=>cfg.cooldown=+e.target.value;
+video.addEventListener("loadedmetadata",resize);
+window.addEventListener("resize",resize);
