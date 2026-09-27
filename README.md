@@ -1,14 +1,18 @@
-# LASER TRAINING V2 — Blanco 0–5
+# Laser Training V3
 
-MVP para iPhone + cartucho láser rojo de 9 mm. Usa la cámara trasera, detección de rojo brillante, calibración básica, contador, puntuación aproximada 0–5, coordenadas y tiempos.
+Versión corregida para iPhone.
 
-## Prueba
-1. Servir esta carpeta por HTTPS (o localhost).
-2. Abrir en Safari y autorizar la cámara.
-3. Encuadrar el blanco completo.
-4. Calibrar.
-5. Iniciar sesión.
-6. Probar el cartucho láser.
+## Requisito fundamental
+La cámara del iPhone requiere un contexto seguro: HTTPS. No abras `index.html` directamente desde Archivos.
 
-## Limitación actual
-El mapa de puntuación es una aproximación inicial basada en la geometría de la imagen suministrada. La siguiente versión debe calibrar las esquinas y zonas exactas del blanco físico y mejorar la detección temporal del destello para reducir falsos positivos.
+### Forma sencilla
+Subí esta carpeta a GitHub Pages, Netlify o Vercel y abrí la dirección HTTPS en Safari. Luego autorizá la cámara.
+
+## Flujo
+1. Activar cámara.
+2. Encuadrar blanco.
+3. Calibrar.
+4. Iniciar sesión.
+5. Apuntar el láser rojo.
+
+La puntuación 0–5 de esta versión es aproximada. La próxima versión debe incorporar una plantilla geométrica exacta del blanco suministrado y calibración por esquinas.
