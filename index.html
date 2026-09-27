@@ -1,22 +1,55 @@
-<!doctype html><html lang="es"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#0b0b0b"><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
-<title>Laser Training V15</title></head><body><div class="app">
-<section id="home" class="screen home"><div class="brand">LASER <span>TRAINING</span></div>
-<p>Entrenamiento de tiro seco</p><button id="startBtn" class="btn primary">INICIAR</button>
-<small>Detección por pulso · cámara trasera · sonido</small></section>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#080808">
+<link rel="stylesheet" href="styles.css">
+<link rel="manifest" href="manifest.json">
+<title>Laser Training V16</title>
+</head>
+<body>
+<main>
+<section id="home" class="home">
+  <h1>LASER <span>TRAINING</span></h1>
+  <p>Entrenamiento de tiro seco</p>
+  <button id="start" class="primary">INICIAR</button>
+</section>
 
-<section id="session" class="screen session hidden"><div class="camera">
-<video id="video" autoplay playsinline muted></video><canvas id="overlay"></canvas>
-<div class="stats"><span>DISPAROS <b id="shots">0</b></span><span>PUNTOS <b id="points">0</b></span></div>
-<div id="status" class="status">BUSCANDO LÁSER…</div><div id="flash" class="flash"></div></div>
-<div class="targetPanel"><div class="targetHead"><span>BLANCO · IMPACTOS</span><span>ÚLTIMO: <b id="last">—</b></span></div>
-<div id="targetBox" class="targetBox"><img id="target" src="assets/blanco.jpg" alt="Blanco"><canvas id="marks"></canvas>
-<div id="targetError" class="targetError hidden">NO SE PUDO CARGAR EL BLANCO</div></div></div>
-<div class="controls"><button id="pause" class="btn secondary">PAUSAR</button><button id="finish" class="btn danger">FINALIZAR</button></div></section>
+<section id="session" class="session hidden">
+  <div class="camera">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="cameraMark"></canvas>
+    <div class="hud"><span>DISPAROS <b id="shotCount">0</b></span><span>PUNTOS <b id="score">0</b></span></div>
+    <div id="state">INICIANDO CÁMARA…</div>
+  </div>
 
-<section id="result" class="screen result hidden"><div class="brand">RESULTADO</div>
-<div class="card"><div><small>DISPAROS</small><b id="rs">0</b></div><div><small>PUNTOS</small><b id="rp">0</b></div>
-<div><small>PROMEDIO</small><b id="ra">0.0</b></div><div><small>MEJOR</small><b id="rb">0</b></div></div>
-<button id="again" class="btn primary">NUEVA SESIÓN</button></section>
-</div><script src="app.js"></script></body></html>
+  <div class="targetArea">
+    <div class="targetTitle"><span>BLANCO</span><span>ÚLTIMO <b id="last">—</b></span></div>
+    <div class="targetStage">
+      <img id="target" src="assets/blanco.jpg" alt="Blanco">
+      <canvas id="targetMark"></canvas>
+      <div id="loadError" class="error hidden">NO SE CARGÓ EL BLANCO</div>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button id="pause" class="secondary">PAUSAR</button>
+    <button id="finish" class="danger">FINALIZAR</button>
+  </div>
+</section>
+
+<section id="result" class="result hidden">
+  <h1>RESULTADO</h1>
+  <div class="resultGrid">
+    <div><small>DISPAROS</small><b id="rShots">0</b></div>
+    <div><small>PUNTOS</small><b id="rPoints">0</b></div>
+    <div><small>PROMEDIO</small><b id="rAvg">0.0</b></div>
+    <div><small>MEJOR</small><b id="rBest">0</b></div>
+  </div>
+  <button id="again" class="primary">NUEVA SESIÓN</button>
+</section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

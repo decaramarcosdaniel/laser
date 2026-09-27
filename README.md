@@ -1,14 +1,13 @@
-# Laser Training V15
+# Laser Training V16
 
-Corrección principal: la detección deja de contar simplemente un punto rojo presente.
-Ahora busca un PULSO NUEVO y repentino:
-- rojo muy saturado;
-- área pequeña;
-- aumento de intensidad respecto del fotograma anterior;
-- confirmación en varios fotogramas;
-- el sistema debe volver a quedar sin pulso antes de armar el siguiente disparo;
-- intervalo mínimo entre disparos.
+V16 corrige la estructura visual de la V15:
+- cámara arriba con tamaño fijo y visible;
+- blanco abajo, siempre dentro de su contenedor;
+- controles separados;
+- canvas de impactos dimensionado después de cargar cámara e imagen;
+- estado visible de cámara;
+- detector conservador de pulsos rojos;
+- un disparo requiere aparición repentina y luego desaparición antes del siguiente;
+- sonido al validar el disparo.
 
-Esto evita que una zona roja fija, reflejo o iluminación roja se convierta automáticamente en disparos.
-
-El sonido solo se reproduce después de un disparo validado.
+La detección/mapeo todavía es experimental.
